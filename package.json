@@ -8,7 +8,7 @@
   "main": "index.ts",
   "scripts": {
     "start": "nodemon src/index.ts",
-    "build": "tsc",
+    "build": "prisma generate && tsup src/index.ts --format esm --clean --minify",
     "serve": "node dist/index.js"
   },
   "dependencies": {
