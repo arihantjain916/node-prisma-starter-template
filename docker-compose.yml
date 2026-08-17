@@ -1,0 +1,35 @@
+services:
+  db:
+    image: mariadb:11
+    restart: unless-stopped
+    environment:
+      MARIADB_ROOT_PASSWORD: ${DATABASE_PASSWORD:-password}
+      MARIADB_DATABASE: ${DATABASE_NAME:-db_name}
+      MARIADB_USER: ${DATABASE_USER:-username}
+      MARIADB_PASSWORD: ${DATABASE_PASSWORD:-password}
+    ports:
+      - "${DATABASE_PORT:-3306}:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      # Override the host: inside the compose network the DB is "db".
+      DATABASE_HOST: db
+      DATABASE_PORT: 3306
+    ports:
+      - "${PORT:-3566}:${PORT:-3566}"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  db_data:

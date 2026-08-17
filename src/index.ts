@@ -1,36 +1,44 @@
-import express from "express";
-import bodyParser from "body-parser";
-import morgan from "morgan";
-import "dotenv/config";
-import type { Request, Response, NextFunction } from "express";
-// import authRoutes from "./routes/auth.router";
+import { app } from "./app";
+import { env } from "./lib/env";
+import { logger } from "./lib/logger";
+import { prisma } from "./lib/prisma";
 
-const app = express();
-
-app.use(morgan("dev"));
-app.use(express.json());
-app.use(bodyParser.urlencoded({ extended: true }));
-
-// app.use("/api/auth", authRoutes);
-
-app.get("/", (req, res) => {
-  return res.status(200).json({ message: "Welcome" });
+const server = app.listen(env.PORT, () => {
+  logger.info(`Server is running on port ${env.PORT}`);
 });
 
-app.use((res, req, next) => {
-  const error: any = new Error("Route not found.");
-  error.status = 404;
-  next(error);
+let shuttingDown = false;
+
+async function shutdown(signal: string): Promise<void> {
+  if (shuttingDown) return;
+  shuttingDown = true;
+
+  logger.info(`${signal} received, shutting down`);
+
+  // Stop accepting connections, then drain the DB pool.
+  server.close((err) => {
+    if (err) logger.error({ err }, "Error closing HTTP server");
+  });
+
+  try {
+    await prisma.$disconnect();
+  } catch (err) {
+    logger.error({ err }, "Error disconnecting Prisma");
+  }
+
+  process.exit(0);
+}
+
+for (const signal of ["SIGTERM", "SIGINT"] as const) {
+  process.on(signal, () => void shutdown(signal));
+}
+
+process.on("unhandledRejection", (reason) => {
+  logger.fatal({ reason }, "Unhandled promise rejection");
+  void shutdown("unhandledRejection");
 });
 
-app.use((err: any, req: Request, res: Response, next: NextFunction) => {
-  return res
-    .status(err.status || 500)
-    .json({ message: err.message || "Internal Server Error", status: false });
-});
-
-const port = process.env.PORT || 3000;
-
-app.listen(port, () => {
-  console.log(`Server is running on port ${port}`);
+process.on("uncaughtException", (err) => {
+  logger.fatal({ err }, "Uncaught exception");
+  void shutdown("uncaughtException");
 });
