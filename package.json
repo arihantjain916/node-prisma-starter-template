@@ -9,7 +9,12 @@
   "scripts": {
     "start": "tsx --watch src/index.ts",
     "build": "prisma generate && tsup src/index.ts --format esm --clean --minify",
-    "serve": "node dist/index.js"
+    "serve": "node dist/index.js",
+    "prepare": "husky",
+    "typecheck": "tsc --noEmit"
+  },
+  "lint-staged": {
+    "*.{ts,js,json,md}": "prettier --write"
   },
   "dependencies": {
     "@prisma/adapter-mariadb": "^7.9.0",
@@ -24,8 +29,13 @@
     "typescript": "^5.9.3"
   },
   "devDependencies": {
+    "@commitlint/cli": "^21.2.2",
+    "@commitlint/config-conventional": "^21.2.2",
     "@types/express": "^5.0.6",
     "@types/morgan": "^1.9.10",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.3.0",
+    "prettier": "^3.9.6",
     "ts-node": "^10.9.2"
   }
 }
